@@ -106,4 +106,63 @@ export const checklistApi = {
   getForModel: (modelId: string) => api.get(`/checklists/for-model/${modelId}`),
 }
 
+// Manufacturer Inspection API
+export const manufacturerInspectionApi = {
+  list: (params?: { status?: string; inspectorId?: string; page?: number; limit?: number }) =>
+    api.get('/manufacturer-inspection', { params }),
+  getById: (id: string) => api.get(`/manufacturer-inspection/${id}`),
+  getByUnitId: (unitId: string) => api.get(`/manufacturer-inspection/unit/${unitId}`),
+  getPendingInspection: () => api.get('/manufacturer-inspection/pending-inspection'),
+  getPendingApproval: () => api.get('/manufacturer-inspection/pending-approval'),
+  getReadyToShip: () => api.get('/manufacturer-inspection/ready-to-ship'),
+  start: (unitId: string, templateId?: string) =>
+    api.post('/manufacturer-inspection/start', { unitId, templateId }),
+  updateItem: (inspectionId: string, itemId: string, data: { status: string; notes?: string; issueSeverity?: string }) =>
+    api.patch(`/manufacturer-inspection/${inspectionId}/items/${itemId}`, data),
+  updateItems: (inspectionId: string, items: { itemId: string; status: string; notes?: string }[]) =>
+    api.patch(`/manufacturer-inspection/${inspectionId}/items`, { items }),
+  complete: (id: string, data: { generalNotes?: string; signatureData?: string }) =>
+    api.post(`/manufacturer-inspection/${id}/complete`, data),
+  approve: (id: string, data?: { approvalNotes?: string }) =>
+    api.post(`/manufacturer-inspection/${id}/approve`, data || {}),
+  reject: (id: string, data: { rejectionReason: string }) =>
+    api.post(`/manufacturer-inspection/${id}/reject`, data),
+  ship: (unitId: string) => api.post(`/manufacturer-inspection/ship/${unitId}`),
+}
+
+// Item Notes API
+export const itemNotesApi = {
+  create: (data: { manufacturerItemId?: string; acceptanceItemId?: string; content: string; visibleToDealer?: boolean }) =>
+    api.post('/item-notes', data),
+  getForManufacturerItem: (itemId: string) => api.get(`/item-notes/manufacturer-item/${itemId}`),
+  getForAcceptanceItem: (itemId: string) => api.get(`/item-notes/acceptance-item/${itemId}`),
+  getForUnit: (unitId: string) => api.get(`/item-notes/unit/${unitId}`),
+  update: (id: string, data: { content?: string; visibleToDealer?: boolean }) =>
+    api.patch(`/item-notes/${id}`, data),
+  submit: (id: string, data?: { makeVisibleToDealer?: boolean }) =>
+    api.post(`/item-notes/${id}/submit`, data || {}),
+  delete: (id: string) => api.delete(`/item-notes/${id}`),
+}
+
+// Units API - extended for manufacturer
+export const manufacturerUnitsApi = {
+  create: (data: {
+    vin: string;
+    modelYear: number;
+    dealerId?: string;
+    modelId?: string;
+    stockNumber?: string;
+    exteriorColor?: string;
+    interiorColor?: string;
+    chassisType?: string;
+    engineType?: string;
+    gvwr?: number;
+    msrp?: number;
+    productionDate?: string;
+    plantLocation?: string;
+    specialInstructions?: string;
+  }) => api.post('/units', data),
+  update: (id: string, data: any) => api.put(`/units/${id}`, data),
+}
+
 export default api
