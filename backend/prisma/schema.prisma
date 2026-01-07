@@ -1,0 +1,456 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CORE ENTITIES
+// ============================================================================
+
+model Dealer {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  address   Json?    // { street, city, state, zip, country }
+  phone     String?
+  email     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+  units Unit[]
+
+  @@map("dealers")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  dealerId     String?  @map("dealer_id")
+  email        String   @unique
+  name         String
+  role         UserRole
+  passwordHash String   @map("password_hash")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  dealer            Dealer?            @relation(fields: [dealerId], references: [id])
+  acceptanceRecords AcceptanceRecord[]
+  unitEvents        UnitEvent[]
+  auditLogs         AuditLog[]
+  checklistTemplates ChecklistTemplate[] @relation("CreatedTemplates")
+
+  @@map("users")
+}
+
+enum UserRole {
+  DEALER_TECH
+  DEALER_ADMIN
+  MFG_QA
+  MFG_ADMIN
+  SYSTEM_ADMIN
+}
+
+model Model {
+  id       String  @id @default(uuid())
+  name     String
+  code     String  @unique
+  category String?
+  active   Boolean @default(true)
+
+  units Unit[]
+
+  @@map("models")
+}
+
+model Option {
+  id       String @id @default(uuid())
+  name     String
+  code     String @unique
+  category String?
+
+  unitOptions UnitOption[]
+
+  @@map("options")
+}
+
+// ============================================================================
+// UNIT MANAGEMENT
+// ============================================================================
+
+model Unit {
+  id            String      @id @default(uuid())
+  vin           String      @unique
+  stockNumber   String?     @map("stock_number")
+  dealerId      String?     @map("dealer_id")
+  modelId       String?     @map("model_id")
+  modelYear     Int         @map("model_year")
+  exteriorColor String?     @map("exterior_color")
+  interiorColor String?     @map("interior_color")
+  chassisType   String?     @map("chassis_type")
+  engineType    String?     @map("engine_type")
+  gvwr          Int?        // Gross Vehicle Weight Rating
+  shipDate      DateTime?   @map("ship_date")
+  receiveDate   DateTime?   @map("receive_date")
+  status        UnitStatus  @default(PENDING_PDI)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  dealer            Dealer?            @relation(fields: [dealerId], references: [id])
+  model             Model?             @relation(fields: [modelId], references: [id])
+  unitOptions       UnitOption[]
+  pdiRecords        PdiRecord[]
+  acceptanceRecords AcceptanceRecord[]
+  unitEvents        UnitEvent[]
+
+  @@index([vin])
+  @@index([dealerId])
+  @@index([status])
+  @@map("units")
+}
+
+enum UnitStatus {
+  PENDING_PDI
+  PDI_COMPLETE
+  PDI_ISSUES
+  SHIPPED
+  RECEIVED
+  IN_ACCEPTANCE
+  ACCEPTED
+  CONDITIONALLY_ACCEPTED
+  REJECTED
+}
+
+model UnitOption {
+  id       String @id @default(uuid())
+  unitId   String @map("unit_id")
+  optionId String @map("option_id")
+
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  option Option @relation(fields: [optionId], references: [id])
+
+  @@unique([unitId, optionId])
+  @@map("unit_options")
+}
+
+model UnitEvent {
+  id          String    @id @default(uuid())
+  unitId      String    @map("unit_id")
+  eventType   EventType @map("event_type")
+  eventDate   DateTime  @map("event_date")
+  description String?
+  source      String?
+  userId      String?   @map("user_id")
+  metadata    Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  unit Unit  @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("unit_events")
+}
+
+enum EventType {
+  MANUFACTURED
+  PDI_STARTED
+  PDI_COMPLETED
+  SHIPPED
+  RECEIVED
+  ACCEPTANCE_STARTED
+  ACCEPTANCE_COMPLETED
+  WARRANTY_CLAIM
+  SERVICE_PERFORMED
+  SOLD
+}
+
+// ============================================================================
+// PDI (Pre-Delivery Inspection)
+// ============================================================================
+
+model PdiRecord {
+  id            String    @id @default(uuid())
+  unitId        String    @map("unit_id")
+  inspectorId   String?   @map("inspector_id")
+  inspectorName String?   @map("inspector_name")
+  completedAt   DateTime  @map("completed_at")
+  status        PdiStatus @default(COMPLETE)
+  totalItems    Int?      @map("total_items")
+  passedItems   Int?      @map("passed_items")
+  failedItems   Int?      @map("failed_items")
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  pdiItems  PdiItem[]
+  pdiPhotos PdiPhoto[]
+
+  @@map("pdi_records")
+}
+
+enum PdiStatus {
+  IN_PROGRESS
+  COMPLETE
+  ISSUES_PENDING
+}
+
+model PdiItem {
+  id              String    @id @default(uuid())
+  pdiId           String    @map("pdi_id")
+  checklistItemId String?   @map("checklist_item_id")
+  itemCode        String?   @map("item_code")
+  itemDescription String?   @map("item_description")
+  status          ItemStatus
+  notes           String?
+  resolved        Boolean   @default(false)
+  resolvedBy      String?   @map("resolved_by")
+  resolvedAt      DateTime? @map("resolved_at")
+  resolutionNotes String?   @map("resolution_notes")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  pdiRecord PdiRecord  @relation(fields: [pdiId], references: [id], onDelete: Cascade)
+  pdiPhotos PdiPhoto[]
+
+  @@map("pdi_items")
+}
+
+model PdiPhoto {
+  id            String    @id @default(uuid())
+  pdiItemId     String?   @map("pdi_item_id")
+  pdiId         String?   @map("pdi_id")
+  filePath      String    @map("file_path")
+  thumbnailPath String?   @map("thumbnail_path")
+  photoType     PhotoType @default(GENERAL) @map("photo_type")
+  capturedAt    DateTime? @map("captured_at")
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  pdiItem   PdiItem?   @relation(fields: [pdiItemId], references: [id], onDelete: Cascade)
+  pdiRecord PdiRecord? @relation(fields: [pdiId], references: [id], onDelete: Cascade)
+
+  @@map("pdi_photos")
+}
+
+enum PhotoType {
+  GENERAL
+  ISSUE
+  BEFORE
+  AFTER
+  RESOLUTION
+}
+
+// ============================================================================
+// ACCEPTANCE RECORDS
+// ============================================================================
+
+model AcceptanceRecord {
+  id                 String             @id @default(uuid())
+  unitId             String             @map("unit_id")
+  userId             String             @map("user_id")
+  startedAt          DateTime           @default(now()) @map("started_at")
+  completedAt        DateTime?          @map("completed_at")
+  decision           AcceptanceDecision?
+  conditions         Json?              // Array of condition objects
+  generalNotes       String?            @map("general_notes")
+  signatureData      String?            @map("signature_data") // Base64 encoded signature
+  signatureTimestamp DateTime?          @map("signature_timestamp")
+  signatureIp        String?            @map("signature_ip")
+  deviceInfo         Json?              @map("device_info")
+  locationData       Json?              @map("location_data")
+  status             AcceptanceStatus   @default(IN_PROGRESS)
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  unit             Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id])
+  acceptanceItems  AcceptanceItem[]
+  acceptancePhotos AcceptancePhoto[]
+
+  @@index([unitId])
+  @@index([status])
+  @@map("acceptance_records")
+}
+
+enum AcceptanceDecision {
+  FULL_ACCEPT
+  CONDITIONAL
+  REJECT
+}
+
+enum AcceptanceStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model AcceptanceItem {
+  id              String         @id @default(uuid())
+  acceptanceId    String         @map("acceptance_id")
+  checklistItemId String         @map("checklist_item_id")
+  status          ItemStatus     @default(PENDING)
+  notes           String?
+  isIssue         Boolean        @default(false) @map("is_issue")
+  issueSeverity   IssueSeverity? @map("issue_severity")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  acceptanceRecord AcceptanceRecord  @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
+  checklistItem    ChecklistItem     @relation(fields: [checklistItemId], references: [id])
+  acceptancePhotos AcceptancePhoto[]
+
+  @@index([acceptanceId])
+  @@map("acceptance_items")
+}
+
+enum ItemStatus {
+  PENDING
+  PASS
+  ISSUE
+  FAIL
+  NA
+}
+
+enum IssueSeverity {
+  MINOR
+  MODERATE
+  SEVERE
+}
+
+model AcceptancePhoto {
+  id               String    @id @default(uuid())
+  acceptanceItemId String?   @map("acceptance_item_id")
+  acceptanceId     String?   @map("acceptance_id")
+  filePath         String    @map("file_path")
+  thumbnailPath    String?   @map("thumbnail_path")
+  originalFilename String?   @map("original_filename")
+  fileSize         Int?      @map("file_size")
+  mimeType         String?   @map("mime_type")
+  capturedAt       DateTime  @map("captured_at")
+  gpsLatitude      Decimal?  @map("gps_latitude") @db.Decimal(10, 8)
+  gpsLongitude     Decimal?  @map("gps_longitude") @db.Decimal(11, 8)
+  gpsAccuracy      Decimal?  @map("gps_accuracy") @db.Decimal(10, 2)
+  annotations      Json?
+  fileHash         String?   @map("file_hash")
+  metadata         Json?
+  syncStatus       SyncStatus @default(SYNCED) @map("sync_status")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  acceptanceItem   AcceptanceItem?   @relation(fields: [acceptanceItemId], references: [id], onDelete: Cascade)
+  acceptanceRecord AcceptanceRecord? @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
+
+  @@map("acceptance_photos")
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+}
+
+// ============================================================================
+// CHECKLIST TEMPLATES
+// ============================================================================
+
+model ChecklistTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  version     Int      @default(1)
+  description String?
+  modelIds    String[] @map("model_ids") // UUIDs of applicable models
+  active      Boolean  @default(true)
+  createdById String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  createdBy  User?               @relation("CreatedTemplates", fields: [createdById], references: [id])
+  categories ChecklistCategory[]
+
+  @@map("checklist_templates")
+}
+
+model ChecklistCategory {
+  id          String  @id @default(uuid())
+  templateId  String  @map("template_id")
+  name        String
+  code        String?
+  description String?
+  orderNum    Int     @map("order_num")
+  required    Boolean @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  items    ChecklistItem[]
+
+  @@map("checklist_categories")
+}
+
+model ChecklistItem {
+  id                   String  @id @default(uuid())
+  categoryId           String  @map("category_id")
+  code                 String
+  description          String
+  instructions         String?
+  orderNum             Int     @map("order_num")
+  required             Boolean @default(true)
+  photoRequired        Boolean @default(false) @map("photo_required")
+  photoRequiredOnIssue Boolean @default(true) @map("photo_required_on_issue")
+  conditionLogic       Json?   @map("condition_logic") // { optionIds: [], logic: 'AND'|'OR'|'NOT' }
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  category        ChecklistCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  acceptanceItems AcceptanceItem[]
+
+  @@map("checklist_items")
+}
+
+// ============================================================================
+// AUDIT & SYNC
+// ============================================================================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  timestamp  DateTime @default(now())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  requestId  String?  @map("request_id")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model SyncQueue {
+  id              String     @id @default(uuid())
+  userId          String     @map("user_id")
+  deviceId        String     @map("device_id")
+  operationType   String     @map("operation_type")
+  entityType      String     @map("entity_type")
+  entityId        String?    @map("entity_id")
+  payload         Json
+  clientTimestamp DateTime   @map("client_timestamp")
+  serverTimestamp DateTime   @default(now()) @map("server_timestamp")
+  status          SyncStatus @default(PENDING)
+  retryCount      Int        @default(0) @map("retry_count")
+  errorMessage    String?    @map("error_message")
+  processedAt     DateTime?  @map("processed_at")
+
+  @@index([status])
+  @@index([userId, deviceId])
+  @@map("sync_queue")
+}
