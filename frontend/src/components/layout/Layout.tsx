@@ -1,8 +1,13 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/auth'
-import { Home, Truck, ClipboardCheck, LogOut, Menu, X } from 'lucide-react'
+import { Home, Truck, ClipboardCheck, LogOut, Menu, X, Package, Factory } from 'lucide-react'
 import { useState } from 'react'
 import clsx from 'clsx'
+
+// Helper to check if user is manufacturer role
+const isManufacturerRole = (role?: string) => {
+  return role === 'MFG_QA' || role === 'MFG_ADMIN' || role === 'SYSTEM_ADMIN'
+}
 
 export default function Layout() {
   const { user, logout } = useAuthStore()
@@ -14,11 +19,19 @@ export default function Layout() {
     navigate('/login')
   }
 
-  const navItems = [
-    { to: '/', icon: Home, label: 'Dashboard' },
+  // Different navigation based on role
+  const dealerNavItems = [
+    { to: '/dashboard', icon: Home, label: 'Dashboard' },
     { to: '/units', icon: Truck, label: 'Units' },
     { to: '/acceptance', icon: ClipboardCheck, label: 'Acceptance' },
   ]
+
+  const manufacturerNavItems = [
+    { to: '/manufacturer', icon: Factory, label: 'Dashboard' },
+    { to: '/manufacturer/units/new', icon: Package, label: 'Create Unit' },
+  ]
+
+  const navItems = isManufacturerRole(user?.role) ? manufacturerNavItems : dealerNavItems
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,8 +107,11 @@ export default function Layout() {
             <Menu className="h-6 w-6" />
           </button>
           <h2 className="text-lg font-semibold text-gray-900">
-            Dealer Acceptance System
+            {isManufacturerRole(user?.role) ? 'Manufacturer Portal' : 'Dealer Acceptance System'}
           </h2>
+          <span className="ml-auto text-sm text-gray-500 hidden sm:block">
+            {user?.role?.replace('_', ' ')}
+          </span>
         </header>
 
         {/* Page content */}

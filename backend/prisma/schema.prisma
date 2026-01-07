@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -47,6 +47,11 @@ model User {
   unitEvents        UnitEvent[]
   auditLogs         AuditLog[]
   checklistTemplates ChecklistTemplate[] @relation("CreatedTemplates")
+
+  // NEW: Manufacturer inspection relations
+  inspectorRecords  ManufacturerInspectionRecord[] @relation("InspectorRecords")
+  approvedRecords   ManufacturerInspectionRecord[] @relation("ApprovedRecords")
+  itemNotes         ItemNote[]
 
   @@map("users")
 }
@@ -92,16 +97,31 @@ model Unit {
   gvwr          Int?     // Gross Vehicle Weight Rating
   shipDate      DateTime? @map("ship_date")
   receiveDate   DateTime? @map("receive_date")
-  status        String   @default("PENDING_PDI") // UnitStatus enum as string
+  status        String   @default("PENDING_INSPECTION") // UnitStatus enum as string
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  dealer            Dealer?            @relation(fields: [dealerId], references: [id])
-  model             Model?             @relation(fields: [modelId], references: [id])
-  unitOptions       UnitOption[]
-  pdiRecords        PdiRecord[]
-  acceptanceRecords AcceptanceRecord[]
-  unitEvents        UnitEvent[]
+  // NEW: Manufacturer approval workflow fields
+  inspectionCompletedAt DateTime? @map("inspection_completed_at")
+  approvedAt            DateTime? @map("approved_at")
+  approvedById          String?   @map("approved_by_id")
+  shippedAt             DateTime? @map("shipped_at")
+  shippedById           String?   @map("shipped_by_id")
+
+  // NEW: Unit profile information
+  msrp                  Float?    // Manufacturer's Suggested Retail Price
+  productionDate        DateTime? @map("production_date")
+  plantLocation         String?   @map("plant_location")
+  warrantyStartDate     DateTime? @map("warranty_start_date")
+  specialInstructions   String?   @map("special_instructions") // JSON string for any special notes
+
+  dealer                        Dealer?                        @relation(fields: [dealerId], references: [id])
+  model                         Model?                         @relation(fields: [modelId], references: [id])
+  unitOptions                   UnitOption[]
+  pdiRecords                    PdiRecord[]
+  acceptanceRecords             AcceptanceRecord[]
+  unitEvents                    UnitEvent[]
+  manufacturerInspectionRecords ManufacturerInspectionRecord[]
 
   @@index([vin])
   @@index([dealerId])
@@ -245,6 +265,7 @@ model AcceptanceItem {
   acceptanceRecord AcceptanceRecord  @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
   checklistItem    ChecklistItem     @relation(fields: [checklistItemId], references: [id])
   acceptancePhotos AcceptancePhoto[]
+  itemNotes        ItemNote[]
 
   @@index([acceptanceId])
   @@map("acceptance_items")
@@ -276,6 +297,109 @@ model AcceptancePhoto {
 }
 
 // ============================================================================
+// MANUFACTURER INSPECTION (Manufacturer's internal inspection before shipping)
+// ============================================================================
+
+model ManufacturerInspectionRecord {
+  id                 String    @id @default(uuid())
+  unitId             String    @map("unit_id")
+  inspectorId        String    @map("inspector_id")
+  startedAt          DateTime  @default(now()) @map("started_at")
+  completedAt        DateTime? @map("completed_at")
+  approvedAt         DateTime? @map("approved_at")
+  approvedById       String?   @map("approved_by_id")
+  status             String    @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, APPROVED, REJECTED
+  totalItems         Int?      @map("total_items")
+  passedItems        Int?      @map("passed_items")
+  failedItems        Int?      @map("failed_items")
+  issueItems         Int?      @map("issue_items")
+  generalNotes       String?   @map("general_notes")
+  signatureData      String?   @map("signature_data") // Base64 encoded signature
+  signatureTimestamp DateTime? @map("signature_timestamp")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  unit                         Unit                          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  inspector                    User                          @relation("InspectorRecords", fields: [inspectorId], references: [id])
+  approvedBy                   User?                         @relation("ApprovedRecords", fields: [approvedById], references: [id])
+  manufacturerInspectionItems  ManufacturerInspectionItem[]
+  manufacturerInspectionPhotos ManufacturerInspectionPhoto[]
+
+  @@index([unitId])
+  @@index([status])
+  @@map("manufacturer_inspection_records")
+}
+
+model ManufacturerInspectionItem {
+  id              String    @id @default(uuid())
+  inspectionId    String    @map("inspection_id")
+  checklistItemId String    @map("checklist_item_id")
+  status          String    @default("PENDING") // PENDING, PASS, ISSUE, FAIL, NA
+  notes           String?
+  isIssue         Boolean   @default(false) @map("is_issue")
+  issueSeverity   String?   @map("issue_severity") // MINOR, MODERATE, MAJOR, CRITICAL
+  resolvedAt      DateTime? @map("resolved_at")
+  resolutionNotes String?   @map("resolution_notes")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  inspectionRecord             ManufacturerInspectionRecord  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  checklistItem                ChecklistItem                 @relation(fields: [checklistItemId], references: [id])
+  manufacturerInspectionPhotos ManufacturerInspectionPhoto[]
+  itemNotes                    ItemNote[]
+
+  @@index([inspectionId])
+  @@map("manufacturer_inspection_items")
+}
+
+model ManufacturerInspectionPhoto {
+  id               String    @id @default(uuid())
+  inspectionItemId String?   @map("inspection_item_id")
+  inspectionId     String?   @map("inspection_id")
+  filePath         String    @map("file_path")
+  thumbnailPath    String?   @map("thumbnail_path")
+  originalFilename String?   @map("original_filename")
+  fileSize         Int?      @map("file_size")
+  mimeType         String?   @map("mime_type")
+  photoType        String    @default("GENERAL") @map("photo_type") // GENERAL, ISSUE, RESOLUTION, DOCUMENTATION
+  capturedAt       DateTime  @map("captured_at")
+  metadata         String?   // JSON string
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  inspectionItem   ManufacturerInspectionItem?   @relation(fields: [inspectionItemId], references: [id], onDelete: Cascade)
+  inspectionRecord ManufacturerInspectionRecord? @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@map("manufacturer_inspection_photos")
+}
+
+// ============================================================================
+// SHARED NOTES (Notes that can be shared between manufacturer and dealer)
+// ============================================================================
+
+model ItemNote {
+  id                       String   @id @default(uuid())
+  // Link to either manufacturer inspection item OR dealer acceptance item
+  manufacturerItemId       String?  @map("manufacturer_item_id")
+  acceptanceItemId         String?  @map("acceptance_item_id")
+  authorId                 String   @map("author_id")
+  authorRole               String   @map("author_role") // MANUFACTURER, DEALER
+  content                  String
+  visibleToDealer          Boolean  @default(false) @map("visible_to_dealer") // If false, only manufacturer can see
+  visibleToManufacturer    Boolean  @default(true) @map("visible_to_manufacturer") // If false, only dealer can see
+  submittedAt              DateTime? @map("submitted_at") // When note was officially submitted/shared
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  manufacturerItem ManufacturerInspectionItem? @relation(fields: [manufacturerItemId], references: [id], onDelete: Cascade)
+  acceptanceItem   AcceptanceItem?             @relation(fields: [acceptanceItemId], references: [id], onDelete: Cascade)
+  author           User                        @relation(fields: [authorId], references: [id])
+
+  @@index([manufacturerItemId])
+  @@index([acceptanceItemId])
+  @@map("item_notes")
+}
+
+// ============================================================================
 // CHECKLIST TEMPLATES
 // ============================================================================
 
@@ -289,6 +413,9 @@ model ChecklistTemplate {
   createdById String?  @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // NEW: Template type to distinguish manufacturer vs dealer checklists
+  templateType String  @default("DEALER") @map("template_type") // MANUFACTURER, DEALER
 
   createdBy  User?               @relation("CreatedTemplates", fields: [createdById], references: [id])
   categories ChecklistCategory[]
@@ -325,8 +452,19 @@ model ChecklistItem {
   conditionLogic       String?  @map("condition_logic") // JSON string: { optionIds: [], logic: 'AND'|'OR'|'NOT' }
   createdAt            DateTime @default(now()) @map("created_at")
 
-  category        ChecklistCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  acceptanceItems AcceptanceItem[]
+  // NEW: Standard requirements and documentation
+  requirements         String?  // Standard requirement text that must be met
+  standardDescription  String?  @map("standard_description") // Detailed standard description
+  documentationUrl     String?  @map("documentation_url") // Link to reference documentation
+
+  // NEW: Manufacturer/Dealer checklist mapping
+  manufacturerOnly     Boolean  @default(false) @map("manufacturer_only") // If true, only shown in manufacturer checklist
+  dealerVisible        Boolean  @default(true) @map("dealer_visible") // If false, hidden from dealer side-by-side
+  mappedItemCode       String?  @map("mapped_item_code") // Code of corresponding item in other checklist for side-by-side matching
+
+  category                    ChecklistCategory               @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  acceptanceItems             AcceptanceItem[]
+  manufacturerInspectionItems ManufacturerInspectionItem[]
 
   @@map("checklist_items")
 }
