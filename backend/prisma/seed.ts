@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, UnitStatus, ItemStatus, PdiStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -66,12 +66,12 @@ async function main() {
       data: {
         name: 'ABC RV Dealership',
         code: 'ABC001',
-        address: {
+        address: JSON.stringify({
           street: '123 RV Lane',
           city: 'Chicago',
           state: 'IL',
           zip: '60601',
-        },
+        }),
         phone: '+1-555-123-4567',
         email: 'contact@abcrv.com',
       },
@@ -80,12 +80,12 @@ async function main() {
       data: {
         name: 'Sunshine RV Center',
         code: 'SUN002',
-        address: {
+        address: JSON.stringify({
           street: '456 Sunny Blvd',
           city: 'Tampa',
           state: 'FL',
           zip: '33601',
-        },
+        }),
         phone: '+1-555-987-6543',
         email: 'info@sunshinervs.com',
       },
@@ -103,7 +103,7 @@ async function main() {
       data: {
         email: 'admin@example.com',
         name: 'System Admin',
-        role: UserRole.SYSTEM_ADMIN,
+        role: 'SYSTEM_ADMIN',
         passwordHash,
       },
     }),
@@ -112,7 +112,7 @@ async function main() {
       data: {
         email: 'qa@manufacturer.com',
         name: 'Mike Rodriguez',
-        role: UserRole.MFG_QA,
+        role: 'MFG_QA',
         passwordHash,
       },
     }),
@@ -121,7 +121,7 @@ async function main() {
       data: {
         email: 'admin@abcrv.com',
         name: 'Bob Manager',
-        role: UserRole.DEALER_ADMIN,
+        role: 'DEALER_ADMIN',
         dealerId: dealers[0].id,
         passwordHash,
       },
@@ -131,7 +131,7 @@ async function main() {
       data: {
         email: 'dealer@example.com',
         name: 'John Smith',
-        role: UserRole.DEALER_TECH,
+        role: 'DEALER_TECH',
         dealerId: dealers[0].id,
         passwordHash,
       },
@@ -141,7 +141,7 @@ async function main() {
       data: {
         email: 'mary@abcrv.com',
         name: 'Mary Jones',
-        role: UserRole.DEALER_TECH,
+        role: 'DEALER_TECH',
         dealerId: dealers[0].id,
         passwordHash,
       },
@@ -275,7 +275,7 @@ async function main() {
     // Unit ready for acceptance
     prisma.unit.create({
       data: {
-        vin: '1THO123456ABC78901',
+        vin: '1THOA2345ABC78901',
         stockNumber: 'STK-2024-001',
         dealerId: dealers[0].id,
         modelId: models[0].id,
@@ -287,13 +287,13 @@ async function main() {
         gvwr: 22000,
         shipDate: new Date('2024-01-03'),
         receiveDate: new Date('2024-01-05'),
-        status: UnitStatus.RECEIVED,
+        status: 'RECEIVED',
       },
     }),
     // Unit with PDI issues
     prisma.unit.create({
       data: {
-        vin: '1THO234567DEF89012',
+        vin: '1THOB3456DEF89012',
         stockNumber: 'STK-2024-002',
         dealerId: dealers[0].id,
         modelId: models[1].id,
@@ -305,13 +305,13 @@ async function main() {
         gvwr: 18000,
         shipDate: new Date('2024-01-04'),
         receiveDate: new Date('2024-01-06'),
-        status: UnitStatus.PDI_COMPLETE,
+        status: 'PDI_COMPLETE',
       },
     }),
     // Unit in acceptance
     prisma.unit.create({
       data: {
-        vin: '1THO345678GHI90123',
+        vin: '1THOC4567GHI90123',
         stockNumber: 'STK-2024-003',
         dealerId: dealers[0].id,
         modelId: models[2].id,
@@ -322,13 +322,13 @@ async function main() {
         engineType: 'Cummins 6.7L',
         gvwr: 26000,
         receiveDate: new Date('2024-01-04'),
-        status: UnitStatus.IN_ACCEPTANCE,
+        status: 'IN_ACCEPTANCE',
       },
     }),
     // Accepted unit
     prisma.unit.create({
       data: {
-        vin: '1THO456789JKL01234',
+        vin: '1THOD5678JKL01234',
         stockNumber: 'STK-2024-004',
         dealerId: dealers[0].id,
         modelId: models[3].id,
@@ -339,13 +339,13 @@ async function main() {
         engineType: 'Cummins 6.7L',
         gvwr: 28000,
         receiveDate: new Date('2024-01-02'),
-        status: UnitStatus.ACCEPTED,
+        status: 'ACCEPTED',
       },
     }),
     // Unit pending PDI
     prisma.unit.create({
       data: {
-        vin: '1THO567890KLM12345',
+        vin: '1THOE6789KLM12345',
         stockNumber: 'STK-2024-005',
         dealerId: dealers[0].id,
         modelId: models[0].id,
@@ -355,7 +355,7 @@ async function main() {
         chassisType: 'Ford F-53',
         engineType: '7.3L V8',
         gvwr: 22000,
-        status: UnitStatus.PENDING_PDI,
+        status: 'PENDING_PDI',
       },
     }),
   ]);
@@ -369,7 +369,7 @@ async function main() {
       inspectorId: 'INS-001',
       inspectorName: 'Mike Rodriguez',
       completedAt: new Date('2024-01-04T14:30:00Z'),
-      status: PdiStatus.COMPLETE,
+      status: 'COMPLETE',
       totalItems: 142,
       passedItems: 139,
       failedItems: 3,
@@ -379,7 +379,7 @@ async function main() {
           {
             itemCode: '2.3.1',
             itemDescription: 'Dinette table stability',
-            status: ItemStatus.ISSUE,
+            status: 'ISSUE',
             notes: 'Dinette table wobble, mounting loose',
             resolved: true,
             resolvedBy: 'T. Martinez',
@@ -389,7 +389,7 @@ async function main() {
           {
             itemCode: '2.2.2',
             itemDescription: 'Wardrobe door alignment',
-            status: ItemStatus.ISSUE,
+            status: 'ISSUE',
             notes: 'Wardrobe door misaligned',
             resolved: true,
             resolvedBy: 'T. Martinez',
@@ -399,7 +399,7 @@ async function main() {
           {
             itemCode: '4.1.3',
             itemDescription: 'Kitchen faucet connection',
-            status: ItemStatus.ISSUE,
+            status: 'ISSUE',
             notes: 'Minor drip at kitchen faucet connection',
             resolved: true,
             resolvedBy: 'J. Wilson',
@@ -420,7 +420,7 @@ async function main() {
       inspectorId: 'INS-001',
       inspectorName: 'Mike Rodriguez',
       completedAt: new Date('2024-01-05T10:00:00Z'),
-      status: PdiStatus.COMPLETE,
+      status: 'COMPLETE',
       totalItems: 142,
       passedItems: 142,
       failedItems: 0,
@@ -468,7 +468,7 @@ async function main() {
   // Update unit statuses
   await prisma.unit.update({
     where: { id: units[0].id },
-    data: { status: UnitStatus.RECEIVED },
+    data: { status: 'RECEIVED' },
   });
 
   console.log('Database seeded successfully!');

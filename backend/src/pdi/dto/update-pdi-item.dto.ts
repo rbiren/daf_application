@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ItemStatus } from '@prisma/client';
+import { ItemStatus } from '../../common/enums';
 
 export class UpdatePdiItemDto {
   @ApiPropertyOptional({ enum: ItemStatus })

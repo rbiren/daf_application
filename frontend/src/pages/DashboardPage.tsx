@@ -136,12 +136,16 @@ export default function DashboardPage() {
                     </p>
                   )}
                 </div>
-                <Link
-                  to={`/acceptance/${unit.acceptanceRecords?.[0]?.id}`}
-                  className="btn-secondary btn-sm"
-                >
-                  Resume
-                </Link>
+                {unit.acceptanceRecords?.[0]?.id ? (
+                  <Link
+                    to={`/acceptance/${unit.acceptanceRecords[0].id}`}
+                    className="btn-secondary btn-sm"
+                  >
+                    Resume
+                  </Link>
+                ) : (
+                  <span className="text-sm text-gray-400">No record</span>
+                )}
               </div>
             ))}
           </div>

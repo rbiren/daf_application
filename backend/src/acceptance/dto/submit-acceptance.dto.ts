@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AcceptanceDecision } from '@prisma/client';
+import { AcceptanceDecision } from '../../common/enums';
 
 export class ConditionDto {
   @ApiProperty()

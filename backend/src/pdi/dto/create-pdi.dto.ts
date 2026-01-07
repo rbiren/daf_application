@@ -1,7 +1,7 @@
 import { IsString, IsOptional, IsArray, ValidateNested, IsEnum, IsBoolean, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ItemStatus } from '@prisma/client';
+import { ItemStatus } from '../../common/enums';
 
 export class CreatePdiItemDto {
   @ApiPropertyOptional({ example: '1.2.3' })

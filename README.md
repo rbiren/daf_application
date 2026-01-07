@@ -17,7 +17,7 @@ A comprehensive digital platform for managing RV dealer acceptance workflows, re
 ### Backend
 - **Runtime**: Node.js 20 LTS
 - **Framework**: NestJS
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: SQLite (dev) / PostgreSQL (prod) with Prisma ORM
 - **Authentication**: JWT with refresh tokens
 - **API Documentation**: Swagger/OpenAPI
 
@@ -174,6 +174,24 @@ npm run prisma:studio
 
 # Reset database and reseed
 npm run db:reset
+```
+
+
+## Recent Updates
+
+### Bug Fixes (January 2025)
+
+- **Fixed enum imports**: Replaced `@prisma/client` enum imports with local TypeScript enums in `src/common/enums.ts` for better type safety
+- **Fixed pagination bug**: Query parameters now properly parsed as numbers in acceptance service
+- **Fixed VIN validation**: Seed data now uses valid 17-character VINs (standard VIN format)
+- **Fixed Dashboard links**: "Resume" button now only appears when there's a valid acceptance record ID
+
+### Database
+
+The application uses SQLite for development (`prisma/dev.db`). For production, configure PostgreSQL in `.env`:
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/dealer_acceptance"
 ```
 
 ## License

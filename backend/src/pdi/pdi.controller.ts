@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../common/enums';
 import { CreatePdiDto } from './dto/create-pdi.dto';
 import { UpdatePdiItemDto } from './dto/update-pdi-item.dto';
 

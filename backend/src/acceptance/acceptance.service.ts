@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChecklistService } from '../checklist/checklist.service';
-import { UnitStatus, AcceptanceStatus, AcceptanceDecision, ItemStatus, EventType } from '@prisma/client';
+import { UnitStatus, AcceptanceStatus, AcceptanceDecision, ItemStatus, EventType } from '../common/enums';
 import { StartAcceptanceDto } from './dto/start-acceptance.dto';
 import { UpdateAcceptanceItemDto } from './dto/update-acceptance-item.dto';
 import { SubmitAcceptanceDto } from './dto/submit-acceptance.dto';
@@ -14,7 +14,9 @@ export class AcceptanceService {
   ) {}
 
   async findAll(options: { dealerId?: string; status?: AcceptanceStatus; page?: number; limit?: number }) {
-    const { dealerId, status, page = 1, limit = 20 } = options;
+    const { dealerId, status } = options;
+    const page = Number(options.page) || 1;
+    const limit = Number(options.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -318,6 +320,9 @@ export class AcceptanceService {
       [AcceptanceDecision.FULL_ACCEPT]: UnitStatus.ACCEPTED,
       [AcceptanceDecision.CONDITIONAL]: UnitStatus.CONDITIONALLY_ACCEPTED,
       [AcceptanceDecision.REJECT]: UnitStatus.REJECTED,
+      [AcceptanceDecision.ACCEPTED]: UnitStatus.ACCEPTED,
+      [AcceptanceDecision.ACCEPTED_WITH_CONDITIONS]: UnitStatus.CONDITIONALLY_ACCEPTED,
+      [AcceptanceDecision.REJECTED]: UnitStatus.REJECTED,
     };
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -328,7 +333,7 @@ export class AcceptanceService {
           status: AcceptanceStatus.COMPLETED,
           completedAt: new Date(),
           decision: data.decision,
-          conditions: data.conditions,
+          conditions: data.conditions ? JSON.stringify(data.conditions) : null,
           generalNotes: data.generalNotes,
           signatureData: data.signatureData,
           signatureTimestamp: new Date(),
@@ -350,10 +355,7 @@ export class AcceptanceService {
           eventDate: new Date(),
           description: `Acceptance completed: ${data.decision}`,
           userId,
-          metadata: {
-            decision: data.decision,
-            conditions: data.conditions,
-          },
+          metadata: JSON.stringify({ decision: data.decision, conditions: data.conditions }),
         },
       });
 

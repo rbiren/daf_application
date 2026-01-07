@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsInt, IsUUID, IsEnum, IsDateString, Length, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UnitStatus } from '@prisma/client';
+import { UnitStatus } from '../../common/enums';
 
 export class CreateUnitDto {
   @ApiProperty({ example: '1THO123456ABC78901', description: '17-character VIN' })

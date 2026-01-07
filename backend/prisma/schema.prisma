@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -18,7 +18,7 @@ model Dealer {
   id        String   @id @default(uuid())
   name      String
   code      String   @unique
-  address   Json?    // { street, city, state, zip, country }
+  address   String?  // JSON string: { street, city, state, zip, country }
   phone     String?
   email     String?
   active    Boolean  @default(true)
@@ -36,7 +36,7 @@ model User {
   dealerId     String?  @map("dealer_id")
   email        String   @unique
   name         String
-  role         UserRole
+  role         String   // DEALER_TECH, DEALER_ADMIN, MFG_QA, MFG_ADMIN, SYSTEM_ADMIN
   passwordHash String   @map("password_hash")
   active       Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")
@@ -49,14 +49,6 @@ model User {
   checklistTemplates ChecklistTemplate[] @relation("CreatedTemplates")
 
   @@map("users")
-}
-
-enum UserRole {
-  DEALER_TECH
-  DEALER_ADMIN
-  MFG_QA
-  MFG_ADMIN
-  SYSTEM_ADMIN
 }
 
 model Model {
@@ -87,22 +79,22 @@ model Option {
 // ============================================================================
 
 model Unit {
-  id            String      @id @default(uuid())
-  vin           String      @unique
-  stockNumber   String?     @map("stock_number")
-  dealerId      String?     @map("dealer_id")
-  modelId       String?     @map("model_id")
-  modelYear     Int         @map("model_year")
-  exteriorColor String?     @map("exterior_color")
-  interiorColor String?     @map("interior_color")
-  chassisType   String?     @map("chassis_type")
-  engineType    String?     @map("engine_type")
-  gvwr          Int?        // Gross Vehicle Weight Rating
-  shipDate      DateTime?   @map("ship_date")
-  receiveDate   DateTime?   @map("receive_date")
-  status        UnitStatus  @default(PENDING_PDI)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  vin           String   @unique
+  stockNumber   String?  @map("stock_number")
+  dealerId      String?  @map("dealer_id")
+  modelId       String?  @map("model_id")
+  modelYear     Int      @map("model_year")
+  exteriorColor String?  @map("exterior_color")
+  interiorColor String?  @map("interior_color")
+  chassisType   String?  @map("chassis_type")
+  engineType    String?  @map("engine_type")
+  gvwr          Int?     // Gross Vehicle Weight Rating
+  shipDate      DateTime? @map("ship_date")
+  receiveDate   DateTime? @map("receive_date")
+  status        String   @default("PENDING_PDI") // UnitStatus enum as string
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   dealer            Dealer?            @relation(fields: [dealerId], references: [id])
   model             Model?             @relation(fields: [modelId], references: [id])
@@ -115,18 +107,6 @@ model Unit {
   @@index([dealerId])
   @@index([status])
   @@map("units")
-}
-
-enum UnitStatus {
-  PENDING_PDI
-  PDI_COMPLETE
-  PDI_ISSUES
-  SHIPPED
-  RECEIVED
-  IN_ACCEPTANCE
-  ACCEPTED
-  CONDITIONALLY_ACCEPTED
-  REJECTED
 }
 
 model UnitOption {
@@ -142,15 +122,15 @@ model UnitOption {
 }
 
 model UnitEvent {
-  id          String    @id @default(uuid())
-  unitId      String    @map("unit_id")
-  eventType   EventType @map("event_type")
-  eventDate   DateTime  @map("event_date")
+  id          String   @id @default(uuid())
+  unitId      String   @map("unit_id")
+  eventType   String   @map("event_type") // EventType enum as string
+  eventDate   DateTime @map("event_date")
   description String?
   source      String?
-  userId      String?   @map("user_id")
-  metadata    Json?
-  createdAt   DateTime  @default(now()) @map("created_at")
+  userId      String?  @map("user_id")
+  metadata    String?  // JSON string
+  createdAt   DateTime @default(now()) @map("created_at")
 
   unit Unit  @relation(fields: [unitId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id])
@@ -158,35 +138,22 @@ model UnitEvent {
   @@map("unit_events")
 }
 
-enum EventType {
-  MANUFACTURED
-  PDI_STARTED
-  PDI_COMPLETED
-  SHIPPED
-  RECEIVED
-  ACCEPTANCE_STARTED
-  ACCEPTANCE_COMPLETED
-  WARRANTY_CLAIM
-  SERVICE_PERFORMED
-  SOLD
-}
-
 // ============================================================================
 // PDI (Pre-Delivery Inspection)
 // ============================================================================
 
 model PdiRecord {
-  id            String    @id @default(uuid())
-  unitId        String    @map("unit_id")
-  inspectorId   String?   @map("inspector_id")
-  inspectorName String?   @map("inspector_name")
-  completedAt   DateTime  @map("completed_at")
-  status        PdiStatus @default(COMPLETE)
-  totalItems    Int?      @map("total_items")
-  passedItems   Int?      @map("passed_items")
-  failedItems   Int?      @map("failed_items")
+  id            String   @id @default(uuid())
+  unitId        String   @map("unit_id")
+  inspectorId   String?  @map("inspector_id")
+  inspectorName String?  @map("inspector_name")
+  completedAt   DateTime @map("completed_at")
+  status        String   @default("COMPLETE") // PdiStatus enum as string
+  totalItems    Int?     @map("total_items")
+  passedItems   Int?     @map("passed_items")
+  failedItems   Int?     @map("failed_items")
   notes         String?
-  createdAt     DateTime  @default(now()) @map("created_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
   pdiItems  PdiItem[]
@@ -195,19 +162,13 @@ model PdiRecord {
   @@map("pdi_records")
 }
 
-enum PdiStatus {
-  IN_PROGRESS
-  COMPLETE
-  ISSUES_PENDING
-}
-
 model PdiItem {
   id              String    @id @default(uuid())
   pdiId           String    @map("pdi_id")
   checklistItemId String?   @map("checklist_item_id")
   itemCode        String?   @map("item_code")
   itemDescription String?   @map("item_description")
-  status          ItemStatus
+  status          String    // ItemStatus enum as string
   notes           String?
   resolved        Boolean   @default(false)
   resolvedBy      String?   @map("resolved_by")
@@ -227,9 +188,9 @@ model PdiPhoto {
   pdiId         String?   @map("pdi_id")
   filePath      String    @map("file_path")
   thumbnailPath String?   @map("thumbnail_path")
-  photoType     PhotoType @default(GENERAL) @map("photo_type")
+  photoType     String    @default("GENERAL") @map("photo_type") // PhotoType enum as string
   capturedAt    DateTime? @map("captured_at")
-  metadata      Json?
+  metadata      String?   // JSON string
   createdAt     DateTime  @default(now()) @map("created_at")
 
   pdiItem   PdiItem?   @relation(fields: [pdiItemId], references: [id], onDelete: Cascade)
@@ -238,35 +199,27 @@ model PdiPhoto {
   @@map("pdi_photos")
 }
 
-enum PhotoType {
-  GENERAL
-  ISSUE
-  BEFORE
-  AFTER
-  RESOLUTION
-}
-
 // ============================================================================
 // ACCEPTANCE RECORDS
 // ============================================================================
 
 model AcceptanceRecord {
-  id                 String             @id @default(uuid())
-  unitId             String             @map("unit_id")
-  userId             String             @map("user_id")
-  startedAt          DateTime           @default(now()) @map("started_at")
-  completedAt        DateTime?          @map("completed_at")
-  decision           AcceptanceDecision?
-  conditions         Json?              // Array of condition objects
-  generalNotes       String?            @map("general_notes")
-  signatureData      String?            @map("signature_data") // Base64 encoded signature
-  signatureTimestamp DateTime?          @map("signature_timestamp")
-  signatureIp        String?            @map("signature_ip")
-  deviceInfo         Json?              @map("device_info")
-  locationData       Json?              @map("location_data")
-  status             AcceptanceStatus   @default(IN_PROGRESS)
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid())
+  unitId             String    @map("unit_id")
+  userId             String    @map("user_id")
+  startedAt          DateTime  @default(now()) @map("started_at")
+  completedAt        DateTime? @map("completed_at")
+  decision           String?   // AcceptanceDecision enum as string
+  conditions         String?   // JSON string - Array of condition objects
+  generalNotes       String?   @map("general_notes")
+  signatureData      String?   @map("signature_data") // Base64 encoded signature
+  signatureTimestamp DateTime? @map("signature_timestamp")
+  signatureIp        String?   @map("signature_ip")
+  deviceInfo         String?   @map("device_info") // JSON string
+  locationData       String?   @map("location_data") // JSON string
+  status             String    @default("IN_PROGRESS") // AcceptanceStatus enum as string
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   unit             Unit               @relation(fields: [unitId], references: [id], onDelete: Cascade)
   user             User               @relation(fields: [userId], references: [id])
@@ -278,28 +231,16 @@ model AcceptanceRecord {
   @@map("acceptance_records")
 }
 
-enum AcceptanceDecision {
-  FULL_ACCEPT
-  CONDITIONAL
-  REJECT
-}
-
-enum AcceptanceStatus {
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
 model AcceptanceItem {
-  id              String         @id @default(uuid())
-  acceptanceId    String         @map("acceptance_id")
-  checklistItemId String         @map("checklist_item_id")
-  status          ItemStatus     @default(PENDING)
+  id              String   @id @default(uuid())
+  acceptanceId    String   @map("acceptance_id")
+  checklistItemId String   @map("checklist_item_id")
+  status          String   @default("PENDING") // ItemStatus enum as string
   notes           String?
-  isIssue         Boolean        @default(false) @map("is_issue")
-  issueSeverity   IssueSeverity? @map("issue_severity")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  isIssue         Boolean  @default(false) @map("is_issue")
+  issueSeverity   String?  @map("issue_severity") // IssueSeverity enum as string
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   acceptanceRecord AcceptanceRecord  @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
   checklistItem    ChecklistItem     @relation(fields: [checklistItemId], references: [id])
@@ -309,49 +250,29 @@ model AcceptanceItem {
   @@map("acceptance_items")
 }
 
-enum ItemStatus {
-  PENDING
-  PASS
-  ISSUE
-  FAIL
-  NA
-}
-
-enum IssueSeverity {
-  MINOR
-  MODERATE
-  SEVERE
-}
-
 model AcceptancePhoto {
-  id               String    @id @default(uuid())
-  acceptanceItemId String?   @map("acceptance_item_id")
-  acceptanceId     String?   @map("acceptance_id")
-  filePath         String    @map("file_path")
-  thumbnailPath    String?   @map("thumbnail_path")
-  originalFilename String?   @map("original_filename")
-  fileSize         Int?      @map("file_size")
-  mimeType         String?   @map("mime_type")
-  capturedAt       DateTime  @map("captured_at")
-  gpsLatitude      Decimal?  @map("gps_latitude") @db.Decimal(10, 8)
-  gpsLongitude     Decimal?  @map("gps_longitude") @db.Decimal(11, 8)
-  gpsAccuracy      Decimal?  @map("gps_accuracy") @db.Decimal(10, 2)
-  annotations      Json?
-  fileHash         String?   @map("file_hash")
-  metadata         Json?
-  syncStatus       SyncStatus @default(SYNCED) @map("sync_status")
-  createdAt        DateTime  @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  acceptanceItemId String?  @map("acceptance_item_id")
+  acceptanceId     String?  @map("acceptance_id")
+  filePath         String   @map("file_path")
+  thumbnailPath    String?  @map("thumbnail_path")
+  originalFilename String?  @map("original_filename")
+  fileSize         Int?     @map("file_size")
+  mimeType         String?  @map("mime_type")
+  capturedAt       DateTime @map("captured_at")
+  gpsLatitude      Float?   @map("gps_latitude")
+  gpsLongitude     Float?   @map("gps_longitude")
+  gpsAccuracy      Float?   @map("gps_accuracy")
+  annotations      String?  // JSON string
+  fileHash         String?  @map("file_hash")
+  metadata         String?  // JSON string
+  syncStatus       String   @default("SYNCED") @map("sync_status") // SyncStatus enum as string
+  createdAt        DateTime @default(now()) @map("created_at")
 
   acceptanceItem   AcceptanceItem?   @relation(fields: [acceptanceItemId], references: [id], onDelete: Cascade)
   acceptanceRecord AcceptanceRecord? @relation(fields: [acceptanceId], references: [id], onDelete: Cascade)
 
   @@map("acceptance_photos")
-}
-
-enum SyncStatus {
-  PENDING
-  SYNCED
-  FAILED
 }
 
 // ============================================================================
@@ -363,7 +284,7 @@ model ChecklistTemplate {
   name        String
   version     Int      @default(1)
   description String?
-  modelIds    String[] @map("model_ids") // UUIDs of applicable models
+  modelIds    String?  @map("model_ids") // JSON string of UUIDs of applicable models
   active      Boolean  @default(true)
   createdById String?  @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -376,13 +297,13 @@ model ChecklistTemplate {
 }
 
 model ChecklistCategory {
-  id          String  @id @default(uuid())
-  templateId  String  @map("template_id")
+  id          String   @id @default(uuid())
+  templateId  String   @map("template_id")
   name        String
   code        String?
   description String?
-  orderNum    Int     @map("order_num")
-  required    Boolean @default(true)
+  orderNum    Int      @map("order_num")
+  required    Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
 
   template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
@@ -392,16 +313,16 @@ model ChecklistCategory {
 }
 
 model ChecklistItem {
-  id                   String  @id @default(uuid())
-  categoryId           String  @map("category_id")
+  id                   String   @id @default(uuid())
+  categoryId           String   @map("category_id")
   code                 String
   description          String
   instructions         String?
-  orderNum             Int     @map("order_num")
-  required             Boolean @default(true)
-  photoRequired        Boolean @default(false) @map("photo_required")
-  photoRequiredOnIssue Boolean @default(true) @map("photo_required_on_issue")
-  conditionLogic       Json?   @map("condition_logic") // { optionIds: [], logic: 'AND'|'OR'|'NOT' }
+  orderNum             Int      @map("order_num")
+  required             Boolean  @default(true)
+  photoRequired        Boolean  @default(false) @map("photo_required")
+  photoRequiredOnIssue Boolean  @default(true) @map("photo_required_on_issue")
+  conditionLogic       String?  @map("condition_logic") // JSON string: { optionIds: [], logic: 'AND'|'OR'|'NOT' }
   createdAt            DateTime @default(now()) @map("created_at")
 
   category        ChecklistCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -421,8 +342,8 @@ model AuditLog {
   action     String
   entityType String   @map("entity_type")
   entityId   String?  @map("entity_id")
-  oldValues  Json?    @map("old_values")
-  newValues  Json?    @map("new_values")
+  oldValues  String?  @map("old_values") // JSON string
+  newValues  String?  @map("new_values") // JSON string
   ipAddress  String?  @map("ip_address")
   userAgent  String?  @map("user_agent")
   requestId  String?  @map("request_id")
@@ -436,21 +357,21 @@ model AuditLog {
 }
 
 model SyncQueue {
-  id              String     @id @default(uuid())
-  userId          String     @map("user_id")
-  deviceId        String     @map("device_id")
-  operationType   String     @map("operation_type")
-  entityType      String     @map("entity_type")
-  entityId        String?    @map("entity_id")
-  payload         Json
-  clientTimestamp DateTime   @map("client_timestamp")
-  serverTimestamp DateTime   @default(now()) @map("server_timestamp")
-  status          SyncStatus @default(PENDING)
-  retryCount      Int        @default(0) @map("retry_count")
-  errorMessage    String?    @map("error_message")
-  processedAt     DateTime?  @map("processed_at")
+  id              String   @id @default(uuid())
+  oduserId        String   @map("user_id")
+  deviceId        String   @map("device_id")
+  operationType   String   @map("operation_type")
+  entityType      String   @map("entity_type")
+  entityId        String?  @map("entity_id")
+  payload         String   // JSON string
+  clientTimestamp DateTime @map("client_timestamp")
+  serverTimestamp DateTime @default(now()) @map("server_timestamp")
+  status          String   @default("PENDING") // SyncStatus enum as string
+  retryCount      Int      @default(0) @map("retry_count")
+  errorMessage    String?  @map("error_message")
+  processedAt     DateTime? @map("processed_at")
 
   @@index([status])
-  @@index([userId, deviceId])
+  @@index([oduserId, deviceId])
   @@map("sync_queue")
 }

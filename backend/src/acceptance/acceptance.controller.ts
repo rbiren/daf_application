@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { UserRole, AcceptanceStatus } from '@prisma/client';
+import { UserRole, AcceptanceStatus } from '../common/enums';
 import { StartAcceptanceDto } from './dto/start-acceptance.dto';
 import { UpdateAcceptanceItemDto } from './dto/update-acceptance-item.dto';
 import { SubmitAcceptanceDto } from './dto/submit-acceptance.dto';

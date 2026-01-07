@@ -54,12 +54,14 @@ export class ChecklistService {
 
   async findForModel(modelId: string) {
     // Find active templates that apply to this model
+    // modelIds is stored as a JSON string, so we use contains to search
     return this.prisma.checklistTemplate.findFirst({
       where: {
         active: true,
         OR: [
-          { modelIds: { has: modelId } },
-          { modelIds: { isEmpty: true } }, // Default template for all models
+          { modelIds: { contains: modelId } },
+          { modelIds: null }, // Default template for all models
+          { modelIds: '[]' }, // Empty array as string
         ],
       },
       include: {
@@ -81,7 +83,7 @@ export class ChecklistService {
       data: {
         name: data.name,
         description: data.description,
-        modelIds: data.modelIds || [],
+        modelIds: data.modelIds ? JSON.stringify(data.modelIds) : null,
         createdById: userId,
         categories: {
           create: data.categories?.map((cat, catIndex) => ({
@@ -118,14 +120,19 @@ export class ChecklistService {
   async update(id: string, data: UpdateChecklistTemplateDto) {
     const template = await this.findById(id);
 
+    const updateData: any = {
+      name: data.name,
+      description: data.description,
+      active: data.active,
+    };
+
+    if (data.modelIds !== undefined) {
+      updateData.modelIds = data.modelIds ? JSON.stringify(data.modelIds) : null;
+    }
+
     return this.prisma.checklistTemplate.update({
       where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        modelIds: data.modelIds,
-        active: data.active,
-      },
+      data: updateData,
     });
   }
 

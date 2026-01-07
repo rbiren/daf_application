@@ -66,7 +66,7 @@ export class DealersService {
       data: {
         name: data.name,
         code: data.code,
-        address: data.address,
+        address: data.address ? JSON.stringify(data.address) : null,
         phone: data.phone,
         email: data.email,
       },
@@ -86,9 +86,14 @@ export class DealersService {
       }
     }
 
+    const updateData: any = { ...data };
+    if (data.address) {
+      updateData.address = JSON.stringify(data.address);
+    }
+
     return this.prisma.dealer.update({
       where: { id },
-      data,
+      data: updateData,
     });
   }
 

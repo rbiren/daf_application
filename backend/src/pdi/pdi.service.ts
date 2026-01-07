@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UnitsService } from '../units/units.service';
-import { UnitStatus, EventType, PdiStatus, ItemStatus } from '@prisma/client';
+import { UnitStatus, EventType, PdiStatus, ItemStatus } from '../common/enums';
 import { CreatePdiDto } from './dto/create-pdi.dto';
 import { UpdatePdiItemDto } from './dto/update-pdi-item.dto';
 
