@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, IsUUID, IsEnum, IsDateString, Length, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsUUID, IsEnum, IsDateString, Length, Min, Max, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UnitStatus } from '../../common/enums';
 
@@ -68,4 +68,25 @@ export class CreateUnitDto {
   @IsOptional()
   @IsEnum(UnitStatus)
   status?: UnitStatus;
+
+  // NEW: Unit Profile Fields
+  @ApiPropertyOptional({ example: 250000.00, description: 'MSRP in dollars' })
+  @IsOptional()
+  @IsNumber()
+  msrp?: number;
+
+  @ApiPropertyOptional({ description: 'Date unit was produced' })
+  @IsOptional()
+  @IsDateString()
+  productionDate?: string;
+
+  @ApiPropertyOptional({ example: 'Elkhart, IN', description: 'Manufacturing plant location' })
+  @IsOptional()
+  @IsString()
+  plantLocation?: string;
+
+  @ApiPropertyOptional({ description: 'Special instructions or notes (JSON string)' })
+  @IsOptional()
+  @IsString()
+  specialInstructions?: string;
 }

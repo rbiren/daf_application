@@ -8,6 +8,8 @@ import { UnitsModule } from './units/units.module';
 import { PdiModule } from './pdi/pdi.module';
 import { AcceptanceModule } from './acceptance/acceptance.module';
 import { ChecklistModule } from './checklist/checklist.module';
+import { ManufacturerInspectionModule } from './manufacturer-inspection/manufacturer-inspection.module';
+import { ItemNotesModule } from './item-notes/item-notes.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { ChecklistModule } from './checklist/checklist.module';
     PdiModule,
     AcceptanceModule,
     ChecklistModule,
+    ManufacturerInspectionModule,
+    ItemNotesModule,
   ],
 })
 export class AppModule {}

@@ -192,7 +192,13 @@ export class UnitsService {
         gvwr: data.gvwr,
         shipDate: data.shipDate,
         receiveDate: data.receiveDate,
-        status: data.status || UnitStatus.PENDING_PDI,
+        // NEW: Default to PENDING_INSPECTION for new manufacturer workflow
+        status: data.status || UnitStatus.PENDING_INSPECTION,
+        // NEW: Unit profile fields
+        msrp: data.msrp,
+        productionDate: data.productionDate,
+        plantLocation: data.plantLocation,
+        specialInstructions: data.specialInstructions,
       },
       include: {
         model: true,
@@ -201,7 +207,7 @@ export class UnitsService {
     });
 
     // Create initial unit event
-    await this.createUnitEvent(unit.id, EventType.MANUFACTURED, 'Unit created in system');
+    await this.createUnitEvent(unit.id, EventType.UNIT_CREATED, 'Unit created in system');
 
     return unit;
   }
@@ -324,22 +330,45 @@ export class UnitsService {
   }
 
   // Pending acceptance units for a dealer
+  // NEW: Only shows units that have been SHIPPED (visible to dealer)
   async getPendingUnits(dealerId: string) {
     return this.prisma.unit.findMany({
       where: {
         dealerId,
         status: {
-          in: [UnitStatus.RECEIVED, UnitStatus.PDI_COMPLETE, UnitStatus.PDI_ISSUES],
+          in: [
+            UnitStatus.SHIPPED,      // Just shipped, not yet received
+            UnitStatus.RECEIVED,     // Received at dealer
+            UnitStatus.PDI_COMPLETE, // Legacy: PDI complete
+            UnitStatus.PDI_ISSUES,   // Legacy: PDI with issues
+          ],
         },
       },
       include: {
         model: true,
+        // Include manufacturer inspection results for side-by-side view
+        manufacturerInspectionRecords: {
+          where: { status: 'APPROVED' },
+          orderBy: { approvedAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            completedAt: true,
+            approvedAt: true,
+            totalItems: true,
+            passedItems: true,
+            failedItems: true,
+            issueItems: true,
+          },
+        },
+        // Legacy PDI records
         pdiRecords: {
           orderBy: { completedAt: 'desc' },
           take: 1,
         },
       },
-      orderBy: { receiveDate: 'desc' },
+      orderBy: { shipDate: 'desc' },
     });
   }
 
