@@ -7,7 +7,9 @@ import {
   CheckCircle,
   Truck,
   Package,
-  ArrowRight
+  ArrowRight,
+  PlayCircle,
+  RefreshCw
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -17,6 +19,11 @@ export default function ManufacturerDashboardPage() {
   const { data: pendingInspection, isLoading: loadingPending } = useQuery({
     queryKey: ['manufacturer', 'pending-inspection'],
     queryFn: () => manufacturerInspectionApi.getPendingInspection().then((res) => res.data),
+  })
+
+  const { data: inProgressInspections, isLoading: loadingInProgress } = useQuery({
+    queryKey: ['manufacturer', 'in-progress'],
+    queryFn: () => manufacturerInspectionApi.getInProgress().then((res) => res.data),
   })
 
   const { data: pendingApproval } = useQuery({
@@ -45,6 +52,13 @@ export default function ManufacturerDashboardPage() {
       bg: 'bg-yellow-50',
     },
     {
+      label: 'In Progress',
+      value: inProgressInspections?.length || 0,
+      icon: PlayCircle,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+    },
+    {
       label: 'Pending Approval',
       value: pendingApproval?.length || 0,
       icon: ClipboardCheck,
@@ -70,7 +84,7 @@ export default function ManufacturerDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.label} className="card">
             <div className="card-body">
@@ -128,6 +142,60 @@ export default function ManufacturerDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Inspections In Progress */}
+      {inProgressInspections?.length > 0 && (
+        <div className="card">
+          <div className="card-header flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Inspections In Progress
+            </h2>
+          </div>
+          <div className="divide-y">
+            {loadingInProgress ? (
+              <div className="p-4 text-center text-gray-500">Loading...</div>
+            ) : (
+              inProgressInspections.map((inspection: any) => {
+                const items = inspection.manufacturerInspectionItems || []
+                const completedItems = items.filter((i: any) => i.status !== 'PENDING').length
+                const totalItems = items.length
+                const percentComplete = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
+
+                return (
+                  <div key={inspection.id} className="flex items-center justify-between p-4">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {inspection.unit?.model?.name || 'Unknown Model'} ({inspection.unit?.modelYear})
+                      </p>
+                      <p className="text-sm text-gray-500">VIN: {inspection.unit?.vin}</p>
+                      <div className="mt-1 flex items-center gap-3 text-xs">
+                        <span className="text-gray-500">
+                          Inspector: {inspection.inspector?.name || 'Unknown'}
+                        </span>
+                        <span className="text-orange-600 font-medium">
+                          {completedItems}/{totalItems} items ({percentComplete}%)
+                        </span>
+                      </div>
+                      {inspection.startedAt && (
+                        <p className="mt-1 text-xs text-gray-400">
+                          Started: {new Date(inspection.startedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <Link
+                      to={`/manufacturer/inspection/${inspection.id}`}
+                      className="btn-primary btn-sm flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Resume
+                    </Link>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Units Pending Approval */}
       {pendingApproval?.length > 0 && (

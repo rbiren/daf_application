@@ -64,12 +64,17 @@ export class UnitsController {
     return this.unitsService.getInProgressUnits(dealerId);
   }
 
-  @Get(':vin')
-  @ApiOperation({ summary: 'Get unit by VIN' })
+  @Get(':identifier')
+  @ApiOperation({ summary: 'Get unit by VIN or ID' })
   @ApiResponse({ status: 200, description: 'Returns unit details' })
   @ApiResponse({ status: 404, description: 'Unit not found' })
-  async findByVin(@Param('vin') vin: string) {
-    return this.unitsService.findByVin(vin);
+  async findByVinOrId(@Param('identifier') identifier: string) {
+    // Check if it's a UUID (ID) or VIN
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+    if (isUuid) {
+      return this.unitsService.findById(identifier);
+    }
+    return this.unitsService.findByVin(identifier);
   }
 
   @Get(':vin/history')

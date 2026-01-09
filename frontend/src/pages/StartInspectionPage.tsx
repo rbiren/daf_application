@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { manufacturerInspectionApi, unitsApi } from '../services/api'
-import { ArrowLeft, Play, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Play, AlertTriangle, RefreshCw } from 'lucide-react'
 
 export default function StartInspectionPage() {
   const { unitId } = useParams<{ unitId: string }>()
@@ -23,6 +23,22 @@ export default function StartInspectionPage() {
     enabled: !!unitId,
   })
 
+  // Check if there's an existing in-progress inspection for this unit
+  const { data: existingInspection } = useQuery({
+    queryKey: ['inspection', 'unit', unitId],
+    queryFn: async () => {
+      try {
+        const res = await manufacturerInspectionApi.getByUnitId(unitId!)
+        return res.data
+      } catch {
+        return null
+      }
+    },
+    enabled: !!unitId,
+  })
+
+  const hasInProgressInspection = existingInspection?.status === 'IN_PROGRESS'
+
   const startMutation = useMutation({
     mutationFn: () => manufacturerInspectionApi.start(unit?.id || unitId!),
     onSuccess: (response) => {
@@ -32,6 +48,15 @@ export default function StartInspectionPage() {
       console.error('Failed to start inspection:', error)
     },
   })
+
+  // If there's an existing in-progress inspection, redirect to it
+  const handleResumeOrStart = () => {
+    if (hasInProgressInspection && existingInspection?.id) {
+      navigate(`/manufacturer/inspection/${existingInspection.id}`)
+    } else {
+      startMutation.mutate()
+    }
+  }
 
   if (isLoading) {
     return <div className="p-8 text-center">Loading unit...</div>
@@ -92,35 +117,70 @@ export default function StartInspectionPage() {
 
       <div className="card">
         <div className="card-header">
-          <h2 className="text-lg font-semibold">Inspection Checklist</h2>
+          <h2 className="text-lg font-semibold">
+            {hasInProgressInspection ? 'Resume Inspection' : 'Inspection Checklist'}
+          </h2>
         </div>
         <div className="card-body">
-          <p className="text-gray-600 mb-4">
-            Starting an inspection will create a new inspection record and load the appropriate
-            checklist for this unit's model. All checklist items will be set to "Pending" status.
-          </p>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div>
-                <h4 className="font-medium text-yellow-800">Before you begin</h4>
-                <ul className="mt-1 text-sm text-yellow-700 list-disc list-inside">
-                  <li>Ensure you have physical access to the unit</li>
-                  <li>Have your documentation and camera ready</li>
-                  <li>The inspection must be completed before the unit can be approved</li>
-                </ul>
+          {hasInProgressInspection ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <RefreshCw className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-blue-800">Inspection In Progress</h4>
+                    <p className="mt-1 text-sm text-blue-700">
+                      This unit has an inspection that was started but not yet completed.
+                      Click below to resume where you left off.
+                    </p>
+                    {existingInspection && (
+                      <p className="mt-2 text-xs text-blue-600">
+                        Started: {new Date(existingInspection.startedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-600 mb-4">
+                Starting an inspection will create a new inspection record and load the appropriate
+                checklist for this unit's model. All checklist items will be set to "Pending" status.
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-yellow-800">Before you begin</h4>
+                    <ul className="mt-1 text-sm text-yellow-700 list-disc list-inside">
+                      <li>Ensure you have physical access to the unit</li>
+                      <li>Have your documentation and camera ready</li>
+                      <li>The inspection must be completed before the unit can be approved</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <div className="card-footer flex justify-end">
           <button
-            onClick={() => startMutation.mutate()}
+            onClick={handleResumeOrStart}
             disabled={startMutation.isPending || !unit}
             className="btn-primary flex items-center gap-2"
           >
-            <Play className="h-4 w-4" />
-            {startMutation.isPending ? 'Starting...' : 'Start Inspection'}
+            {hasInProgressInspection ? (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Resume Inspection
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                {startMutation.isPending ? 'Starting...' : 'Start Inspection'}
+              </>
+            )}
           </button>
         </div>
       </div>

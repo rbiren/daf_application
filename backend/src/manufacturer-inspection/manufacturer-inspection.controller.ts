@@ -78,6 +78,14 @@ export class ManufacturerInspectionController {
     return this.inspectionService.getUnitsPendingApproval();
   }
 
+  @Get('in-progress')
+  @Roles(UserRole.MFG_QA, UserRole.MFG_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ summary: 'Get inspections currently in progress' })
+  @ApiResponse({ status: 200, description: 'Returns inspections in progress' })
+  async getInspectionsInProgress() {
+    return this.inspectionService.getInspectionsInProgress();
+  }
+
   @Get('ready-to-ship')
   @Roles(UserRole.MFG_QA, UserRole.MFG_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiOperation({ summary: 'Get units approved and ready to ship' })

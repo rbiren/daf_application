@@ -113,6 +113,7 @@ export const manufacturerInspectionApi = {
   getById: (id: string) => api.get(`/manufacturer-inspection/${id}`),
   getByUnitId: (unitId: string) => api.get(`/manufacturer-inspection/unit/${unitId}`),
   getPendingInspection: () => api.get('/manufacturer-inspection/pending-inspection'),
+  getInProgress: () => api.get('/manufacturer-inspection/in-progress'),
   getPendingApproval: () => api.get('/manufacturer-inspection/pending-approval'),
   getReadyToShip: () => api.get('/manufacturer-inspection/ready-to-ship'),
   start: (unitId: string, templateId?: string) =>

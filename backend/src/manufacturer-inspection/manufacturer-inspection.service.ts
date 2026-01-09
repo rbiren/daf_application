@@ -569,6 +569,30 @@ export class ManufacturerInspectionService {
   }
 
   /**
+   * Get inspections currently in progress (for manufacturer dashboard)
+   */
+  async getInspectionsInProgress() {
+    return this.prisma.manufacturerInspectionRecord.findMany({
+      where: {
+        status: ManufacturerInspectionStatus.IN_PROGRESS,
+      },
+      include: {
+        unit: {
+          include: {
+            model: true,
+            dealer: { select: { id: true, name: true, code: true } },
+          },
+        },
+        inspector: { select: { id: true, name: true, email: true } },
+        manufacturerInspectionItems: {
+          select: { status: true },
+        },
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
+  /**
    * Find default template for a model
    */
   private async findDefaultTemplate(modelId: string | null, templateType: ChecklistTemplateType) {
